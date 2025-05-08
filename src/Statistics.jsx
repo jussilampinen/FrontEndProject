@@ -9,12 +9,22 @@ export default function Statistics() {
   useEffect(() => {
     axios.get('https://customer-rest-service-frontend-personaltrainer.2.rahtiapp.fi/api/trainings')
       .then(res => {
-        const grouped = _.groupBy(res.data.content, 'activity');
+        // Ensure the response has the correct structure (_embedded.trainings)
+        const trainings = res.data._embedded?.trainings || [];
+        
+        // Group the trainings by activity
+        const grouped = _.groupBy(trainings, 'activity');
+
+        // Map the grouped data to prepare chart data
         const chartData = Object.keys(grouped).map(key => ({
           activity: key,
-          duration: _.sumBy(grouped[key], t => parseInt(t.duration))
+          duration: _.sumBy(grouped[key], t => parseInt(t.duration))  // Sum durations for each activity
         }));
+
         setData(chartData);
+      })
+      .catch(err => {
+        console.error('Error fetching trainings data:', err);
       });
   }, []);
 

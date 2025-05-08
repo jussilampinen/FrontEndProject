@@ -5,6 +5,9 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { confirmAlert } from 'react-confirm-alert';
 import 'react-confirm-alert/src/react-confirm-alert.css';
+import { AgGridReact } from 'ag-grid-react';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-alpine.css';
 
 export default function TrainingList() {
   const [trainings, setTrainings] = useState([]);
@@ -15,6 +18,8 @@ export default function TrainingList() {
     duration: '',
     customer: ''
   });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentTraining, setCurrentTraining] = useState(null);
 
   useEffect(() => {
     fetchTrainings();
@@ -24,19 +29,53 @@ export default function TrainingList() {
   const fetchTrainings = () => {
     axios.get('https://customer-rest-service-frontend-personaltrainer.2.rahtiapp.fi/api/trainings')
       .then(res => {
-        console.log("Trainings fetched:", res.data);
-        setTrainings(res.data.content || []);
+        const trainingData = res.data._embedded?.trainings || [];
+  
+        // Enrich each training with the associated customer's name
+        const enrichedTrainingsPromises = trainingData.map(training => {
+          return axios.get(training._links.customer.href)
+            .then(customerRes => {
+              const customer = customerRes.data;
+              return {
+                ...training,
+                customerName: `${customer.firstname} ${customer.lastname}`,  // Add customer name to training
+              };
+            })
+            .catch(err => {
+              console.error("Error fetching customer for training:", err);
+              return {
+                ...training,
+                customerName: "Unknown",  // Handle error case
+              };
+            });
+        });
+  
+        // Wait for all the promises to resolve before setting the state
+        Promise.all(enrichedTrainingsPromises)
+          .then(result => {
+            setTrainings(result);
+          });
       })
       .catch(err => console.error('Error fetching trainings:', err));
   };
   
+  
+
   const fetchCustomers = () => {
-    axios.get('https://customer-rest-service-frontend-personaltrainer.2.rahtiapp.fi/api/customers')
+    axios
+      .get('https://customer-rest-service-frontend-personaltrainer.2.rahtiapp.fi/api/customers')
       .then(res => {
-        console.log("Customers fetched:", res.data);
-        setCustomers(res.data.content || []);
+        const customers = res.data._embedded.customers.map(c => ({
+          ...c,
+          id: c._links.self.href.split('/').pop(),
+          link: c._links.self.href
+        }));
+        setCustomers(customers);
       })
-      .catch(err => console.error('Error fetching customers:', err));
+      .catch(err => {
+        console.error('Error fetching customers:', err);
+        setCustomers([]);
+      });
   };
 
   const addTraining = () => {
@@ -45,11 +84,13 @@ export default function TrainingList() {
       date: newTraining.date.toISOString(),
     };
 
-    axios.post('https://customer-rest-service-frontend-personaltrainer.2.rahtiapp.fi/api/trainings', training)
+    axios
+      .post('https://customer-rest-service-frontend-personaltrainer.2.rahtiapp.fi/api/trainings', training)
       .then(() => {
         fetchTrainings();
         setNewTraining({ date: new Date(), activity: '', duration: '', customer: '' });
-      });
+      })
+      .catch(err => console.error('Error adding training:', err));
   };
 
   const deleteTraining = (link) => {
@@ -60,15 +101,47 @@ export default function TrainingList() {
         {
           label: 'Kyllä',
           onClick: () => {
-            axios.delete(link).then(() => {
-              fetchTrainings();
-            }).catch(err => console.error('Error deleting training:', err));
+            axios
+              .delete(link)
+              .then(fetchTrainings)
+              .catch(err => console.error('Error deleting training:', err));
           }
         },
         { label: 'Peruuta' }
       ]
     });
   };
+
+  const openEditModal = (training) => {
+    setCurrentTraining(training);  // Set the training to be edited
+    setIsModalOpen(true);          // Open the modal
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setCurrentTraining(null);
+  };
+
+  const updateTraining = () => {
+    // Ensure currentTraining.date is a valid Date object
+    const updatedDate = dayjs(currentTraining.date).isValid()
+      ? dayjs(currentTraining.date).toISOString()
+      : new Date().toISOString();  // Default to current date if invalid
+  
+    const updatedTraining = {
+      ...currentTraining,
+      date: updatedDate,  // Use the validated and formatted date
+    };
+  
+    axios
+      .put(currentTraining._links.self.href, updatedTraining)
+      .then(() => {
+        fetchTrainings();  // Reload the trainings after update
+        setIsModalOpen(false);  // Close the modal
+      })
+      .catch((err) => console.error('Error updating training:', err));
+  };
+  
   
 
   return (
@@ -97,7 +170,7 @@ export default function TrainingList() {
         >
           <option value="">Valitse asiakas</option>
           {customers.map(c => (
-            <option key={c.links[0].href} value={c.links[0].href}>
+            <option key={c.id} value={c.link}>
               {c.firstname} {c.lastname}
             </option>
           ))}
@@ -105,30 +178,92 @@ export default function TrainingList() {
         <button onClick={addTraining}>Lisää harjoitus</button>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Asiakas</th>
-            <th>Aktiviteetti</th>
-            <th>Kesto</th>
-            <th>Päivämäärä</th>
-            <th>Poista</th>
-          </tr>
-        </thead>
-        <tbody>
-          {trainings.map(t => (
-            <tr key={t.id}>
-              <td>{t.customer?.firstname} {t.customer?.lastname}</td>
-              <td>{t.activity}</td>
-              <td>{t.duration}</td>
-              <td>{dayjs(t.date).format('DD.MM.YYYY HH:mm')}</td>
-              <td>
-                <button onClick={() => deleteTraining(`https://customer-rest-service-frontend-personaltrainer.2.rahtiapp.fi/api/trainings/${t.id}`)}>Poista</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="ag-theme-alpine" style={{ height: 500, marginTop: 20 }}>
+        <AgGridReact
+          rowData={trainings}
+          columnDefs={[
+            {
+              headerName: 'Asiakas',
+              field: 'customerName',  // Display customer name from the training object
+            },
+            {
+              headerName: 'Aktiviteetti',
+              field: 'activity',  // Display activity from the training object
+            },
+            {
+              headerName: 'Kesto (min)',
+              field: 'duration',  // Display duration from the training object
+            },
+            {
+              headerName: 'Päivämäärä',
+              field: 'date',
+              valueFormatter: (params) =>
+                dayjs(params.value).format('DD.MM.YYYY')  // Format date field
+            },
+            {
+              headerName: 'Poista',
+              cellRenderer: (params) => (
+                <button
+                  onClick={() => deleteTraining(params.data._links.self.href)}  // Use the self link for deletion
+                >
+                  Poista
+                </button>
+              ),
+            },
+            {
+              headerName: 'Muokkaa',
+              field: 'id',
+              cellRenderer: (params) => (
+                <button onClick={() => openEditModal(params.data)}>Muokkaa</button>
+              )
+            },
+          ]}
+          defaultColDef={{
+            sortable: true,
+            filter: true,
+            resizable: true,
+            flex: 1,
+          }}
+        />
+      </div>
+
+      {/* Modal for editing training */}
+      {isModalOpen && currentTraining && (
+        <div className="modal" style={{ display: 'block' }}>
+          <div className="modal-content">
+            <h3>Muokkaa harjoitusta</h3>
+            <DatePicker
+              selected={currentTraining.date}
+              onChange={date => setCurrentTraining({ ...currentTraining, date })}
+              showTimeSelect
+              dateFormat="Pp"
+            />
+            <input
+              placeholder="Aktiviteetti"
+              value={currentTraining.activity}
+              onChange={e => setCurrentTraining({ ...currentTraining, activity: e.target.value })}
+            />
+            <input
+              placeholder="Kesto (min)"
+              value={currentTraining.duration}
+              onChange={e => setCurrentTraining({ ...currentTraining, duration: e.target.value })}
+            />
+            <select
+              value={currentTraining.customer}
+              onChange={e => setCurrentTraining({ ...currentTraining, customer: e.target.value })}
+            >
+              <option value="">Valitse asiakas</option>
+              {customers.map(c => (
+                <option key={c.id} value={c.link}>
+                  {c.firstname} {c.lastname}
+                </option>
+              ))}
+            </select>
+            <button onClick={updateTraining}>Tallenna muutokset</button>
+            <button onClick={closeModal}>Peruuta</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
