@@ -38,14 +38,14 @@ export default function TrainingList() {
               const customer = customerRes.data;
               return {
                 ...training,
-                customerName: `${customer.firstname} ${customer.lastname}`,  // Add customer name to training
+                customerName: `${customer.firstname} ${customer.lastname}`, 
               };
             })
             .catch(err => {
               console.error("Error fetching customer for training:", err);
               return {
                 ...training,
-                customerName: "Unknown",  // Handle error case
+                customerName: "Unknown", 
               };
             });
         });
@@ -113,8 +113,8 @@ export default function TrainingList() {
   };
 
   const openEditModal = (training) => {
-    setCurrentTraining(training);  // Set the training to be edited
-    setIsModalOpen(true);          // Open the modal
+    setCurrentTraining(training); 
+    setIsModalOpen(true);          
   };
 
   const closeModal = () => {
@@ -126,18 +126,18 @@ export default function TrainingList() {
     // Ensure currentTraining.date is a valid Date object
     const updatedDate = dayjs(currentTraining.date).isValid()
       ? dayjs(currentTraining.date).toISOString()
-      : new Date().toISOString();  // Default to current date if invalid
+      : new Date().toISOString();  
   
     const updatedTraining = {
       ...currentTraining,
-      date: updatedDate,  // Use the validated and formatted date
+      date: updatedDate, 
     };
   
     axios
       .put(currentTraining._links.self.href, updatedTraining)
       .then(() => {
-        fetchTrainings();  // Reload the trainings after update
-        setIsModalOpen(false);  // Close the modal
+        fetchTrainings();  
+        setIsModalOpen(false);  
       })
       .catch((err) => console.error('Error updating training:', err));
   };

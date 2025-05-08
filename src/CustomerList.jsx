@@ -28,8 +28,8 @@ export default function CustomerList() {
     city: ''
   });
   const [loading, setLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false); // Modal visibility state
-  const [currentCustomer, setCurrentCustomer] = useState(null); // Current customer being edited
+  const [isModalOpen, setIsModalOpen] = useState(false); 
+  const [currentCustomer, setCurrentCustomer] = useState(null); 
 
   useEffect(() => {
     fetchCustomers();
@@ -43,7 +43,7 @@ export default function CustomerList() {
       .then(res => {
         const customers = res.data._embedded.customers.map(c => ({
           ...c,
-          id: c._links.self.href.split('/').pop()  // extract ID from self link
+          id: c._links.self.href.split('/').pop() 
         }));
         setCustomers(customers);
       })
@@ -60,7 +60,7 @@ export default function CustomerList() {
     axios
       .post('https://customer-rest-service-frontend-personaltrainer.2.rahtiapp.fi/api/customers', newCustomer)
       .then(res => {
-        fetchCustomers(); // Reload to get the ID
+        fetchCustomers(); 
         setNewCustomer({
           firstname: '',
           lastname: '',
@@ -116,8 +116,8 @@ export default function CustomerList() {
     axios
       .put(`https://customer-rest-service-frontend-personaltrainer.2.rahtiapp.fi/api/customers/${currentCustomer.id}`, currentCustomer)
       .then(() => {
-        fetchCustomers(); // Refresh customers
-        closeModal(); // Close the modal
+        fetchCustomers(); 
+        closeModal(); 
       })
       .catch(err => {
         console.error('Error updating customer:', err);
@@ -190,6 +190,7 @@ export default function CustomerList() {
           columnDefs={columnDefs}
           defaultColDef={{ sortable: true, filter: true, flex: 1 }}
           rowModelType="clientSide"
+          getRowHeight={() => 100}
         />
       </div>
 

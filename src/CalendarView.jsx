@@ -25,10 +25,10 @@ export default function CalendarView() {
           const data = res.data.content.map(t => ({
             title: `${t.activity} (${t.customer?.firstname || 'Unknown'} ${t.customer?.lastname || ''})`,
             start: new Date(t.date),
-            end: new Date(new Date(t.date).getTime() + (t.duration * 60000)), // End time based on duration
+            end: new Date(new Date(t.date).getTime() + (t.duration * 60000)), 
           }));
-          console.log('Events:', data);  // Log the events to check
-          setEvents(data);  // Set the events for the calendar
+          console.log('Events:', data);  
+          setEvents(data);  
         } else {
           console.error('No valid event data available.');
         }
@@ -48,8 +48,8 @@ export default function CalendarView() {
         endAccessor="end"
         style={{ height: 600 }}
         views={['month', 'week', 'day']}
-        defaultView="week"  // Default to week view
-        toolbar  // Add toolbar to allow navigation
+        defaultView="week"  
+        toolbar  
       />
     </div>
   );

@@ -18,7 +18,7 @@ export default function Statistics() {
         // Map the grouped data to prepare chart data
         const chartData = Object.keys(grouped).map(key => ({
           activity: key,
-          duration: _.sumBy(grouped[key], t => parseInt(t.duration))  // Sum durations for each activity
+          duration: _.sumBy(grouped[key], t => parseInt(t.duration)) 
         }));
 
         setData(chartData);
