@@ -89,7 +89,7 @@ export default function CustomerList() {
     {
       headerName: 'Poista',
       field: 'id',
-      cellRenderer: 'deleteButton'
+      cellRenderer: (params) => <DeleteButton {...params} deleteCustomer={deleteCustomer} />
     }
   ];
 
@@ -126,10 +126,10 @@ export default function CustomerList() {
         <AgGridReact
           rowData={customers}
           columnDefs={columnDefs}
-          frameworkComponents={{ deleteButton: (props) => <DeleteButton {...props} deleteCustomer={deleteCustomer} /> }}
           defaultColDef={{ sortable: true, filter: true, flex: 1 }}
           rowModelType="clientSide"
         />
+
       </div>
     </div>
   );
